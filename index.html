@@ -840,3 +840,91 @@
             const elCenterX = elRect.left + elRect.width / 2;
             const elCenterY = elRect.top + elRect.height / 2;
             return (elCenterX >= dropRect.left && elCenterX <= dropRect.right && elCenterY >=
+mud.style.left = `${Math.random() * 100}%`;
+                    mud.style.width = mud.style.height = `${20 + Math.random() * 40}px`;
+                    mud.style.animationDuration = `${1.5 + Math.random() * 2}s`;
+                    container.appendChild(mud);
+                    setTimeout(() => mud.remove(), 4000);
+                }
+            }, 300);
+        }
+
+        // 閃電動畫
+        function startLightning() {
+            setInterval(() => {
+                lightning.classList.add('flash-active');
+                setTimeout(() => lightning.classList.remove('flash-active'), 500);
+            }, 3000 + Math.random() * 5000);
+        }
+
+        // 故事流程
+        function nextStoryStep() {
+            storyStep++;
+            if (storyStep === 2) {
+                storyDesc.innerHTML = `泥石流越來越靠近村莊了！<br><span class="sub-english">The mudslide is getting closer!</span>`;
+            } else if (storyStep === 3) {
+                storyDesc.innerHTML = `快把救命的物資放進避難包！<br><span class="sub-english">Pack life-saving items now!</span>`;
+            } else {
+                document.getElementById('intro-overlay').style.display = 'none';
+                initGame();
+                startTimer(); // 正式開始計時
+            }
+        }
+
+        function skipIntro() {
+            document.getElementById('intro-overlay').style.display = 'none';
+            initGame();
+            startTimer();
+        }
+
+        // 遊戲初始化
+        function initGame() {
+            const desk = document.getElementById('desk');
+            itemsData.forEach((item, index) => {
+                const div = document.createElement('div');
+                div.className = 'item';
+                div.id = item.id;
+                div.draggable = true;
+                div.style.left = `${20 + (index % 4) * 110}px`;
+                div.style.top = `${100 + Math.floor(index / 4) * 120}px`;
+                div.innerHTML = `<svg viewBox="0 0 100 100">${item.svg}</svg><div class="item-label">${item.en}</div>`;
+                
+                div.addEventListener('dragstart', (e) => e.dataTransfer.setData('text', item.id));
+                desk.appendChild(div);
+            });
+        }
+
+        // 放置邏輯 (Drag and Drop)
+        const dropZone = document.getElementById('drop-zone');
+        dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('hovered'); });
+        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('hovered'));
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('hovered');
+            const itemId = e.dataTransfer.getData('text');
+            const itemObj = itemsData.find(i => i.id === itemId);
+            
+            if (itemObj.isEssential) {
+                // 正確物品
+                document.getElementById(itemId).classList.add('in-bag');
+                const mini = document.createElement('div');
+                mini.className = 'mini-item';
+                mini.innerHTML = `<svg viewBox="0 0 100 100">${itemObj.svg}</svg>`;
+                document.getElementById('packed-items').appendChild(mini);
+                
+                showFeedback(true);
+                if (document.querySelectorAll('.mini-item').length === 6) showFinalScore();
+            } else {
+                // 錯誤物品 (懲罰)
+                showFeedback(false);
+                triggerPenalty();
+            }
+        });
+
+        // 顯示回饋與秒數邏輯 (與您之前的設定對齊)
+        function showFeedback(isCorrect) {
+            const icon = document.getElementById(isCorrect ? 'icon-correct' : 'icon-wrong');
+            icon.style.opacity = '1';
+            setTimeout(() => icon.style.opacity = '0', 500);
+        }
+    </script>
