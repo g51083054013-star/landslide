@@ -1,0 +1,842 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Go Pack! Go Bag! 防災包二次確認</title>
+    <!-- 引入最適合兒童的圓潤英文字型 Fredoka 與繁體中文 Noto Sans TC -->
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&family=Noto+Sans+TC:wght@700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #fcf8f2; /* 溫暖手繪紙張底色 */
+            --line-color: #2b2b2b;  /* 溫暖粗手繪線條 */
+            --correct-color: #4caf50;
+            --wrong-color: #ff5722;
+            --bag-color: #ffb300;
+        }
+
+        * {
+            /* 統一英文字體為 Fredoka，中文字體為 Noto Sans TC */
+            font-family: 'Fredoka', 'Noto Sans TC', sans-serif !important;
+            box-sizing: border-box;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-color);
+            color: var(--line-color);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100vh;
+            touch-action: none;
+            background-image: radial-gradient(#e0dcd3 1.5px, transparent 1.5px);
+            background-size: 24px 24px;
+        }
+
+        /* --- 家族選擇畫面 (雙語) --- */
+        #family-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-color: #1e1e2f;
+            z-index: 6000;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: #fff;
+            text-align: center;
+            padding: 20px;
+        }
+        .family-title {
+            font-size: 2.3rem;
+            font-weight: 900;
+            margin-bottom: 5px;
+            color: #ffca28;
+            text-shadow: 3px 3px 0 #000;
+        }
+        .family-subtitle {
+            font-size: 1.3rem;
+            color: #b0bec5;
+            margin-bottom: 30px;
+            font-weight: 600;
+        }
+        .family-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 110px);
+            gap: 20px;
+        }
+        .family-btn {
+            font-size: 2.2rem;
+            padding: 15px;
+            background: #ffb300;
+            border: 4px solid #000;
+            border-radius: 20px;
+            color: #000;
+            cursor: pointer;
+            box-shadow: 4px 4px 0 #000;
+            font-weight: bold;
+            transition: transform 0.1s;
+        }
+        .family-btn:active {
+            transform: translate(2px, 2px);
+            box-shadow: 2px 2px 0 #000;
+        }
+
+        /* --- 土石流懲罰畫面 (雙語) --- */
+        #penalty-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(216, 67, 21, 0.95);
+            z-index: 4000;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: #fff;
+            text-align: center;
+            padding: 20px;
+        }
+        .penalty-alert {
+            font-size: 2.5rem;
+            font-weight: 900;
+            color: #ffeb3b;
+            animation: shakeHouse 0.2s infinite alternate;
+            text-shadow: 4px 4px 0 #000;
+            line-height: 1.3;
+        }
+        .penalty-countdown {
+            font-size: 5rem;
+            font-weight: 900;
+            margin: 20px 0;
+            background: #000;
+            color: #ff5722;
+            padding: 10px 45px;
+            border-radius: 25px;
+            border: 4px solid #fff;
+            box-shadow: 0 10px 0 rgba(0,0,0,0.3);
+        }
+        .penalty-desc {
+            font-size: 1.4rem;
+            font-weight: bold;
+            line-height: 1.6;
+            max-width: 600px;
+        }
+
+        /* --- 前情提要動畫區塊 --- */
+        #intro-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-color: #1e1e2f;
+            z-index: 5000;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            align-items: center;
+            overflow: hidden;
+            transition: opacity 0.8s ease;
+        }
+
+        .mountain-scene {
+            position: absolute;
+            bottom: 0; left: 0; width: 100%; height: 100%;
+            z-index: 2;
+            pointer-events: none;
+        }
+
+        .rain-container {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .drop {
+            position: absolute;
+            background: linear-gradient(transparent, rgba(255, 255, 255, 0.5));
+            width: 3px; height: 80px;
+            opacity: 0.6;
+            transform: rotate(18deg);
+            animation: fall linear infinite;
+        }
+
+        @keyframes fall {
+            0% { transform: translateY(-120px) translateX(0) rotate(18deg); }
+            100% { transform: translateY(100vh) translateX(-200px) rotate(18deg); }
+        }
+
+        .lightning-flash {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: #ffffff;
+            opacity: 0;
+            pointer-events: none;
+            z-index: 9;
+        }
+
+        .flash-active { animation: flashAnim 0.5s ease-out; }
+
+        @keyframes flashAnim {
+            0% { opacity: 0; }
+            10% { opacity: 0.9; }
+            15% { opacity: 0; }
+            30% { opacity: 0.95; }
+            100% { opacity: 0; }
+        }
+
+        .mudflow-container {
+            position: absolute;
+            width: 100%; height: 100%;
+            z-index: 4;
+            pointer-events: none;
+        }
+
+        .mud-rock {
+            position: absolute;
+            background-color: #6d4c41;
+            border: 3px solid #3e2723;
+            border-radius: 40% 60% 50% 50% / 50% 40% 60% 50%;
+            animation: rollDown linear infinite;
+        }
+
+        @keyframes rollDown {
+            0% { transform: translate(250px, -50px) rotate(0deg) scale(0.6); opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { transform: translate(-100px, 90vh) rotate(-720deg) scale(1.2); opacity: 0; }
+        }
+
+        .mud-river {
+            position: absolute;
+            bottom: 0; left: 0; width: 100%; height: 25%;
+            z-index: 6;
+            transition: height 4s ease;
+        }
+
+        .mud-wave { position: absolute; bottom: 0; width: 200%; height: 100%; background-repeat: repeat-x; }
+
+        .mud-wave-back {
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 120" preserveAspectRatio="none"><path d="M0,40 C150,80 350,10 500,40 C650,80 850,10 1000,40 C1150,80 1300,10 1450,40 L1450,120 L0,120 Z" fill="%235d4037" stroke="%232b2b2b" stroke-width="4"/></svg>');
+            animation: mudMove 7s linear infinite;
+            opacity: 0.9;
+            height: 115%;
+        }
+
+        .mud-wave-front {
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 120" preserveAspectRatio="none"><path d="M0,50 C150,10 350,90 500,50 C650,10 850,90 1000,50 C1150,10 1300,90 1450,50 L1450,120 L0,120 Z" fill="%234e342e" stroke="%232b2b2b" stroke-width="4"/></svg>');
+            animation: mudMove 4.5s linear infinite;
+            height: 100%;
+        }
+
+        @keyframes mudMove {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-50%); }
+        }
+
+        .village-scene {
+            position: absolute;
+            bottom: 12%; width: 100%;
+            display: flex; justify-content: space-around; align-items: flex-end;
+            z-index: 5; padding: 0 40px;
+        }
+
+        .shaking-house {
+            width: 90px; height: 90px;
+            animation: shakeHouse 0.8s ease-in-out infinite alternate;
+            transform-origin: bottom center;
+        }
+
+        @keyframes shakeHouse {
+            0% { transform: rotate(-3deg) translateY(0); }
+            100% { transform: rotate(3deg) translateY(-3px); }
+        }
+
+        .shaking-tree {
+            width: 70px; height: 90px;
+            animation: shakeTree 1.2s ease-in-out infinite alternate;
+            transform-origin: bottom center;
+        }
+
+        @keyframes shakeTree {
+            0% { transform: rotate(-8deg); }
+            100% { transform: rotate(12deg); }
+        }
+
+        .intro-title {
+            color: #ffca28; font-size: 3rem; font-weight: 900; text-align: center;
+            margin-top: 40px; text-shadow: 4px 4px 0px #000; z-index: 100;
+            animation: pulse 1.5s infinite alternate; letter-spacing: 1px;
+        }
+
+        @keyframes pulse { 0% { transform: scale(1); } 100% { transform: scale(1.05); } }
+
+        .story-card {
+            background: #fff; border: 4px solid var(--line-color); border-radius: 28px;
+            padding: 24px; width: 90%; max-width: 500px; text-align: center;
+            box-shadow: 0px 8px 0px var(--line-color); z-index: 100; margin-bottom: 40px;
+            position: relative;
+        }
+
+        .story-msg { font-size: 1.5rem; line-height: 1.5; margin: 0 0 16px 0; color: #333; font-weight: 700; }
+        .story-msg .sub-english { display: block; font-size: 1.1rem; color: #757575; margin-top: 4px; font-weight: 600; }
+
+        .story-btn {
+            font-size: 1.4rem; padding: 12px 36px; background-color: var(--bag-color);
+            border: 3px solid var(--line-color); border-radius: 16px; cursor: pointer;
+            box-shadow: 4px 4px 0px var(--line-color); font-weight: bold; transition: transform 0.1s;
+        }
+        .story-btn:active { transform: translate(2px, 2px); box-shadow: 2px 2px 0px var(--line-color); }
+
+        .skip-btn {
+            position: absolute; top: 20px; right: 20px; background: rgba(255,255,255,0.25);
+            color: #fff; border: 2px solid #fff; border-radius: 12px; padding: 6px 14px;
+            font-size: 0.9rem; cursor: pointer; z-index: 200; font-weight: bold;
+        }
+
+        /* --- 主遊戲畫面 --- */
+        header { text-align: center; margin-top: 10px; z-index: 10; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+        h1 { font-size: 2.3rem; margin: 0; letter-spacing: 1px; text-shadow: 2px 2px 0px #fff; color: #e65100; }
+        
+        .header-status-container {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            align-items: center;
+            margin-top: 5px;
+        }
+
+        .instruction {
+            font-size: 1.1rem; margin: 0; background: #fff; padding: 6px 16px;
+            border-radius: 20px; border: 3px solid var(--line-color); box-shadow: 3px 3px 0px rgba(0,0,0,0.1);
+            font-weight: 700;
+        }
+
+        /* 頂部即時跑馬燈計時器 */
+        .live-timer {
+            font-size: 1.1rem; margin: 0; background: #e53935; color: #fff; padding: 6px 16px;
+            border-radius: 20px; border: 3px solid var(--line-color); box-shadow: 3px 3px 0px rgba(0,0,0,0.1);
+            font-weight: 700;
+        }
+
+        #game-container { flex: 1; width: 100%; max-width: 800px; position: relative; display: flex; flex-direction: column; }
+
+        #drop-zone {
+            width: 85%; height: 190px; margin: 10px auto;
+            border: 4px dashed var(--line-color); border-radius: 28px;
+            background-color: rgba(255, 179, 0, 0.12); position: relative;
+            display: flex; justify-content: center; align-items: flex-end; padding-bottom: 12px;
+            transition: all 0.25s ease;
+        }
+        #drop-zone.hovered { background-color: rgba(76, 175, 80, 0.25); transform: scale(1.02); border-style: solid; }
+
+        .check-badge {
+            position: absolute; top: -12px; background-color: #ff5722; color: white;
+            padding: 4px 12px; border-radius: 10px; font-size: 0.9rem; font-weight: bold;
+            border: 2px solid var(--line-color); box-shadow: 2px 2px 0px var(--line-color);
+        }
+
+        #bag-svg { width: 120px; height: auto; position: absolute; bottom: -5px; pointer-events: none; }
+
+        #desk {
+            flex: 1; width: 100%; display: flex; flex-wrap: wrap; justify-content: center;
+            align-items: center; gap: 12px; padding: 15px; background: rgba(255, 255, 255, 0.7);
+            border-top: 4px solid var(--line-color); border-radius: 32px 32px 0 0; position: relative;
+        }
+
+        .item {
+            width: 95px; height: 95px; background-color: #fff; border: 3.5px solid var(--line-color);
+            border-radius: 22px; display: flex; flex-direction: column; justify-content: center;
+            align-items: center; cursor: grab; position: absolute; box-shadow: 0px 6px 0px var(--line-color);
+            transition: transform 0.1s; touch-action: none; padding: 4px;
+        }
+        .item.dragging { cursor: grabbing; opacity: 0.95; transform: scale(1.18) rotate(2deg); z-index: 1000; }
+        .item.in-bag { display: none; }
+
+        /* 物品標籤 - 調小字型以完整容納全名 */
+        .item-label {
+            font-size: 0.65rem; font-weight: 700; margin-top: 4px; color: #333;
+            text-transform: uppercase; letter-spacing: 0px; text-align: center; line-height: 1.1;
+        }
+        .item svg { width: 65%; height: 65%; }
+
+        #message-box {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background: white; border: 4px solid var(--line-color); border-radius: 28px;
+            padding: 24px; width: 85%; max-width: 500px; text-align: center;
+            box-shadow: 0px 10px 0px var(--line-color); z-index: 2000; display: none;
+            animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        @keyframes popIn { 0% { transform: translate(-50%, -50%) scale(0.6); opacity: 0; } 100% { transform: translate(-50%, -50%) scale(1); opacity: 1; } }
+        #message-box h2 { margin-top: 0; font-size: 2.2rem; color: #e65100; }
+        #message-box p { font-size: 1.15rem; line-height: 1.5; color: #333; }
+        #message-box button {
+            font-size: 1.2rem; padding: 10px 30px; background-color: var(--bag-color);
+            border: 3px solid var(--line-color); border-radius: 14px; cursor: pointer;
+            box-shadow: 3px 3px 0px var(--line-color); margin-top: 12px; font-weight: bold;
+        }
+
+        .feedback-icon { position: absolute; width: 70px; height: 70px; pointer-events: none; z-index: 1500; opacity: 0; transition: all 0.5s; }
+        #packed-items { position: absolute; bottom: 15px; left: 10px; right: 10px; display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; pointer-events: none; max-width: 80%; margin: 0 auto; }
+        
+        .mini-item {
+            width: 32px; height: 32px; background: white; border: 2px solid var(--line-color);
+            border-radius: 8px; padding: 2px; display: flex; justify-content: center; align-items: center;
+        }
+        .mini-item svg { width: 90%; height: 90%; }
+
+        @media (max-width: 600px) {
+            .item { width: 85px; height: 85px; }
+            .item-label { font-size: 0.55rem; }
+            #drop-zone { height: 160px; }
+            h1 { font-size: 1.8rem; }
+            .header-status-container { flex-direction: column; gap: 5px; }
+            .family-title { font-size: 1.8rem; }
+            .family-subtitle { font-size: 1.1rem; }
+            .penalty-alert { font-size: 1.8rem; }
+            .penalty-desc { font-size: 1.1rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 1. 家族選擇畫面 (雙語) -->
+    <div id="family-overlay">
+        <div class="family-title">請選擇你是第幾家族？</div>
+        <div class="family-subtitle">Which family group do you belong to?</div>
+        <div class="family-grid">
+            <button class="family-btn" onclick="selectFamily(1)">1</button>
+            <button class="family-btn" onclick="selectFamily(2)">2</button>
+            <button class="family-btn" onclick="selectFamily(3)">3</button>
+            <button class="family-btn" onclick="selectFamily(4)">4</button>
+            <button class="family-btn" onclick="selectFamily(5)">5</button>
+            <button class="family-btn" onclick="selectFamily(6)">6</button>
+        </div>
+    </div>
+
+    <!-- 2. 土石流懲罰畫面 (雙語) -->
+    <div id="penalty-overlay">
+        <div class="penalty-alert">
+            ⚠️ 放錯物品！遭受土石流攻擊！ ⚠️<br>
+            <span style="font-size: 1.8rem; color: #fff;">Wrong Item! Hit by Mudslide!</span>
+        </div>
+        <div class="mudflow-container" id="penalty-mudflow"></div>
+        <div class="penalty-countdown" id="penalty-timer">5</div>
+        <div class="penalty-desc">
+            避難包裝錯會拖慢避難速度，原地暫停 5 秒！<br>
+            <span style="font-weight: 500; color: #ffe0b2;">Packing incorrect items slows down evacuation. Frozen for 5s!</span>
+        </div>
+    </div>
+
+    <!-- 3. 前情提要動態故事層 -->
+    <div id="intro-overlay" style="display:none;">
+        <button class="skip-btn" onclick="skipIntro()">SKIP ⏩</button>
+        <div class="intro-title" id="game-main-title">GO PACK! GO BAG!</div>
+        <div class="mountain-scene">
+            <svg width="100%" height="100%" viewBox="0 0 800 600" preserveAspectRatio="none" style="position: absolute; bottom: 0;">
+                <path d="M 0,450 Q 150,280 300,380 T 600,320 T 800,420 L 800,600 L 0,600 Z" fill="#2b4c3f" stroke="#1c332a" stroke-width="4"/>
+                <path d="M 150,500 Q 350,250 550,420 T 900,480 L 800,600 L 0,600 Z" fill="#385e4f" stroke="#1c332a" stroke-width="4"/>
+            </svg>
+        </div>
+        <div class="mudflow-container" id="intro-mudflow-layer"></div>
+        <div class="rain-container" id="intro-rain-layer"></div>
+        <div class="lightning-flash" id="lightning"></div>
+        <div class="village-scene">
+            <svg class="shaking-tree" viewBox="0 0 100 120" xmlns="http://www.w3.org/2000/svg">
+                <path d="M 45,80 L 55,80 L 52,110 L 48,110 Z" fill="#5c4033" stroke="#222" stroke-width="3"/>
+                <path d="M 50,15 L 15,75 L 85,75 Z" fill="#1b5e20" stroke="#111" stroke-width="3"/>
+            </svg>
+            <svg class="shaking-house" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                <polygon points="10,45 50,10 90,45" fill="#d84315" stroke="#222" stroke-width="4"/>
+                <rect x="20" y="45" width="60" height="45" fill="#ffb74d" stroke="#222" stroke-width="4"/>
+                <rect x="30" y="55" width="15" height="15" rx="3" fill="#e0f7fa" stroke="#222" stroke-width="3"/>
+                <rect x="55" y="55" width="16" height="35" fill="#8d6e63" stroke="#222" stroke-width="3"/>
+            </svg>
+            <svg class="shaking-tree" style="animation-delay: -0.5s;" viewBox="0 0 100 120" xmlns="http://www.w3.org/2000/svg">
+                <path d="M 45,80 L 55,80 L 52,110 L 48,110 Z" fill="#5c4033" stroke="#222" stroke-width="3"/>
+                <path d="M 50,10 L 10,80 L 90,80 Z" fill="#1b5e20" stroke="#111" stroke-width="3"/>
+            </svg>
+        </div>
+        <div class="mud-river" id="river">
+            <div class="mud-wave mud-wave-back"></div>
+            <div class="mud-wave mud-wave-front"></div>
+        </div>
+        <div class="story-card" id="story-box">
+            <p class="story-msg" id="story-desc">
+                山上下大雨！土石流和泥水衝下來了！🌲⛈️
+                <span class="sub-english">Heavy rain and mudslides are coming down!</span>
+            </p>
+            <button class="story-btn" id="story-next-btn" onclick="nextStoryStep()">OK ➔</button>
+        </div>
+    </div>
+
+    <!-- 4. 主遊戲畫面 -->
+    <header>
+        <h1 id="game-header-title">GO PACK! GO BAG!</h1>
+        <div class="header-status-container">
+            <p class="instruction" id="family-badge">準備中...</p>
+            <p class="live-timer" id="live-timer-badge">⏱️ 0.00s</p>
+        </div>
+    </header>
+
+    <div id="game-container">
+        <div id="drop-zone">
+            <div class="check-badge">DOUBLE CHECK!</div>
+            <svg id="bag-svg" viewBox="0 0 100 120" xmlns="http://www.w3.org/2000/svg">
+                <path d="M 32,24 C 32,4 68,4 68,24" fill="none" stroke="var(--line-color)" stroke-width="6" stroke-linecap="round"/>
+                <path d="M 17,42 C 17,20 35,10 50,10 C 65,10 83,20 83,42 L 91,105 C 91,114 84,118 75,118 L 25,118 C 16,118 9,114 9,105 Z" fill="#e69f00" />
+                <path d="M 20,40 C 20,22 38,12 50,12 C 62,12 80,22 80,40 L 88,105 C 88,112 82,118 75,118 L 25,118 C 18,118 12,112 12,105 Z" fill="var(--bag-color)" stroke="var(--line-color)" stroke-width="4.5" stroke-linejoin="round"/>
+                <rect x="26" y="62" width="48" height="42" rx="10" fill="#fff" stroke="var(--line-color)" stroke-width="4.5"/>
+                <line x1="26" y1="78" x2="74" y2="78" stroke="var(--line-color)" stroke-width="4" stroke-linecap="round"/>
+                <rect x="44" y="70" width="12" height="16" rx="3" fill="#ff5722" stroke="var(--line-color)" stroke-width="3"/>
+                <path d="M 42,34 L 58,34 M 50,26 L 50,42" stroke="#ff5722" stroke-width="6" stroke-linecap="round"/>
+            </svg>
+            <div id="packed-items"></div>
+        </div>
+        <div id="desk"></div>
+    </div>
+
+    <!-- 5. 提示/通關彈出視窗 (雙語 + 精準秒數) -->
+    <div id="message-box">
+        <h2 id="msg-title">OK!</h2>
+        <p id="msg-text">你準備好防災包了！</p>
+        <button id="msg-close-btn" onclick="closeMessageBox()">NEXT ➔</button>
+    </div>
+
+    <!-- 浮動反饋圖示 -->
+    <svg id="icon-correct" class="feedback-icon" style="display:none;" viewBox="0 0 50 50">
+        <circle cx="25" cy="25" r="22" fill="#e8f5e9" stroke="var(--correct-color)" stroke-width="4.5"/>
+        <path d="M 14 25 L 21 32 L 36 15" fill="none" stroke="var(--correct-color)" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <svg id="icon-wrong" class="feedback-icon" style="display:none;" viewBox="0 0 50 50">
+        <circle cx="25" cy="25" r="22" fill="#ffebee" stroke="var(--wrong-color)" stroke-width="4.5"/>
+        <path d="M 16 16 L 34 34 M 34 16 L 16 34" fill="none" stroke="var(--wrong-color)" stroke-width="6.5" stroke-linecap="round"/>
+    </svg>
+
+    <script>
+        // 物品英文化改為全名
+        const itemsData = [
+            { id: 'flashlight', name: '手電筒', en: 'FLASHLIGHT', isEssential: true, msg: '停電時很需要用來照明！🔦', 
+              svg: `<path d="M50 35 L10 5 L90 5 Z" fill="#fff9c4" opacity="0.6"/>
+                    <path d="M50 35 L25 12 L75 12 Z" fill="#fff59d" opacity="0.8"/>
+                    <rect x="42" y="55" width="16" height="32" rx="4" fill="#1e88e5" stroke="var(--line-color)" stroke-width="3.5"/>
+                    <line x1="42" y1="65" x2="58" y2="65" stroke="var(--line-color)" stroke-width="3"/>
+                    <line x1="42" y1="73" x2="58" y2="73" stroke="var(--line-color)" stroke-width="3"/>
+                    <path d="M34 55 L66 55 L58 35 L42 35 Z" fill="#ffd54f" stroke="var(--line-color)" stroke-width="3.5" stroke-linejoin="round"/>
+                    <ellipse cx="50" cy="35" rx="8" ry="4" fill="#fff" stroke="var(--line-color)" stroke-width="3"/>
+                    <circle cx="50" cy="80" r="3.5" fill="#e53935" stroke="var(--line-color)" stroke-width="2"/>` },
+            
+            { id: 'firstaid', name: '急救箱', en: 'FIRST AID KIT', isEssential: true, msg: '受傷時可以用裡面的藥包紮！🩹',
+              svg: `<rect x="15" y="29" width="70" height="52" rx="10" fill="#e0e0e0" />
+                    <rect x="15" y="25" width="70" height="52" rx="10" fill="#ffffff" stroke="var(--line-color)" stroke-width="3.5"/>
+                    <path d="M41 51 L59 51 M50 42 L50 60" stroke="#e53935" stroke-width="8.5" stroke-linecap="round"/>
+                    <rect x="28" y="25" width="8" height="10" fill="#b0bec5" stroke="var(--line-color)" stroke-width="2.5"/>
+                    <rect x="64" y="25" width="8" height="10" fill="#b0bec5" stroke="var(--line-color)" stroke-width="2.5"/>
+                    <path d="M38 25 C38 12 62 12 62 25" fill="none" stroke="var(--line-color)" stroke-width="4" stroke-linecap="round"/>
+                    <path d="M72 70 L82 78 L78 84 L68 76 Z" fill="#ffe0b2" stroke="var(--line-color)" stroke-width="2.5"/>` },
+            
+            { id: 'water', name: '水瓶', en: 'DRINKING WATER', isEssential: true, msg: '維持生命最重要的乾淨水！💧',
+              svg: `<path d="M32 30 C32 24 40 22 40 14 L60 14 C60 22 68 24 68 30 L68 85 C68 92 62 95 50 95 C38 95 32 92 32 85 Z" fill="#e1f5fe" stroke="var(--line-color)" stroke-width="3.5" stroke-linejoin="round"/>
+                    <path d="M33 55 C42 59 58 51 67 55 L67 85 C67 91 62 94 50 94 C38 94 33 91 33 85 Z" fill="#29b6f6" opacity="0.85"/>
+                    <rect x="31.5" y="52" width="37" height="18" fill="#ffffff" stroke="var(--line-color)" stroke-width="3"/>
+                    <path d="M43 61 Q50 65 57 61" stroke="#0288d1" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+                    <rect x="43" y="6" width="14" height="8" rx="2" fill="#0288d1" stroke="var(--line-color)" stroke-width="3"/>` },
+            
+            { id: 'food', name: '乾糧餅乾', en: 'BISCUITS', isEssential: true, msg: '肚子餓了能迅速補充體力！🍪',
+              svg: `<rect x="18" y="18" width="64" height="68" rx="8" fill="#ff7043" stroke="var(--line-color)" stroke-width="3.5"/>
+                    <path d="M18 18 L24 12 L30 18 L36 12 L42 18 L48 12 L54 18 L60 12 L66 18 L72 12 L78 18 L82 12" fill="none" stroke="var(--line-color)" stroke-width="3.5" stroke-linejoin="round"/>
+                    <circle cx="50" cy="54" r="22" fill="#ffca28" stroke="var(--line-color)" stroke-width="3"/>
+                    <circle cx="42" cy="44" r="3.5" fill="#5d4033"/>
+                    <circle cx="58" cy="46" r="3" fill="#5d4033"/>
+                    <circle cx="40" cy="62" r="3" fill="#5d4033"/>
+                    <circle cx="56" cy="62" r="3.5" fill="#5d4033"/>
+                    <circle cx="50" cy="52" r="3" fill="#5d4033"/>` },
+            
+            { id: 'whistle', name: '求救哨子', en: 'EMERGENCY WHISTLE', isEssential: true, msg: '吹出響亮聲音，讓救援人員發現你！😗',
+              svg: `<path d="M68 24 Q82 15 88 28 M74 15 Q92 2 100 20" stroke="#ffca28" stroke-width="4.5" fill="none" stroke-linecap="round"/>
+                    <circle cx="32" cy="55" r="15" fill="#e53935" stroke="var(--line-color)" stroke-width="3.5"/>
+                    <rect x="42" y="42" width="34" height="26" rx="4" fill="#e53935" stroke="var(--line-color)" stroke-width="3.5" stroke-linejoin="round"/>
+                    <rect x="76" y="48" width="8" height="14" fill="#ff5722" stroke="var(--line-color)" stroke-width="3.5"/>
+                    <circle cx="32" cy="55" r="5" fill="#fff" stroke="var(--line-color)" stroke-width="2.5"/>
+                    <circle cx="17" cy="55" r="5" fill="none" stroke="var(--line-color)" stroke-width="3"/>` },
+            
+            { id: 'raincoat', name: '黃色雨衣', en: 'RAINCOAT', isEssential: true, msg: '防止淋濕，避免寒冷失溫！🧥',
+              svg: `<path d="M35 38 C35 12 65 12 65 38 Z" fill="#fdd835" stroke="var(--line-color)" stroke-width="3.5" stroke-linejoin="round"/>
+                    <path d="M35 38 L14 65 L24 65 L24 94 L76 94 L76 65 L86 65 L65 38 Z" fill="#ffd54f" stroke="var(--line-color)" stroke-width="3.5" stroke-linejoin="round"/>
+                    <line x1="50" y1="38" x2="50" y2="94" stroke="var(--line-color)" stroke-width="3"/>
+                    <circle cx="56" cy="50" r="4.5" fill="#ffffff" stroke="var(--line-color)" stroke-width="2.5"/>
+                    <circle cx="56" cy="68" r="4.5" fill="#ffffff" stroke="var(--line-color)" stroke-width="2.5"/>
+                    <circle cx="56" cy="84" r="4.5" fill="#ffffff" stroke="var(--line-color)" stroke-width="2.5"/>` },
+            
+            { id: 'bear', name: '小熊玩具', en: 'TEDDY BEAR', isEssential: false, msg: '雖然牠很可愛，但避難包容量要留給救命物資喔！🧸',
+              svg: `<circle cx="28" cy="24" r="14" fill="#b08d57" stroke="var(--line-color)" stroke-width="3.5"/>
+                    <circle cx="72" cy="24" r="14" fill="#b08d57" stroke="var(--line-color)" stroke-width="3.5"/>
+                    <circle cx="22" cy="62" r="11" fill="#b08d57" stroke="var(--line-color)" stroke-width="3"/>
+                    <circle cx="78" cy="62" r="11" fill="#b08d57" stroke="var(--line-color)" stroke-width="3"/>
+                    <circle cx="32" cy="84" r="13" fill="#b08d57" stroke="var(--line-color)" stroke-width="3.5"/>
+                    <circle cx="68" cy="84" r="13" fill="#b08d57" stroke="var(--line-color)" stroke-width="3.5"/>
+                    <circle cx="50" cy="66" r="26" fill="#b08d57" stroke="var(--line-color)" stroke-width="3.5"/>
+                    <circle cx="50" cy="36" r="23" fill="#b08d57" stroke="var(--line-color)" stroke-width="3.5"/>` },
+            
+            { id: 'game', name: '遊戲機', en: 'GAME CONSOLE', isEssential: false, msg: '逃難要安全第一，重重的遊戲機先留在家裡吧！🎮',
+              svg: `<rect x="14" y="24" width="72" height="52" rx="14" fill="#424242" stroke="var(--line-color)" stroke-width="3.5"/>
+                    <path d="M14 24 L32 24 L32 76 L14 76 C7 76 14 24 14 24 Z" fill="#29b6f6" stroke="var(--line-color)" stroke-width="3.5"/>
+                    <path d="M86 24 L68 24 L68 76 L86 76 C93 76 86 24 86 24 Z" fill="#ff5252" stroke="var(--line-color)" stroke-width="3.5"/>
+                    <rect x="32" y="28" width="36" height="44" fill="#1e1e1e" stroke="var(--line-color)" stroke-width="3.5"/>` }
+        ];
+
+        let selectedFamilyNum = 0;
+        let storyStep = 1;
+        let lightningTimer;
+
+        // 精準計時變數
+        let timerStartTimestamp = null;
+        let timerAnimationId = null;
+        let finalElapsedTime = 0; // 通關總耗時
+        let isTimerRunning = false;
+
+        const rainLayer = document.getElementById('intro-rain-layer');
+        const lightning = document.getElementById('lightning');
+        const river = document.getElementById('river');
+        const introMudflow = document.getElementById('intro-mudflow-layer');
+        const penaltyMudflow = document.getElementById('penalty-mudflow');
+        const storyDesc = document.getElementById('story-desc');
+        const storyNextBtn = document.getElementById('story-next-btn');
+        const liveTimerBadge = document.getElementById('live-timer-badge');
+
+        // 選擇家族
+        function selectFamily(num) {
+            selectedFamilyNum = num;
+            document.getElementById('family-overlay').style.display = 'none';
+            document.getElementById('family-badge').innerHTML = `第 ${num} 家族防災確認中 🏃‍♂️💨<br><span style="font-size:0.75rem; color:#757575;">Family ${num} Evacuating</span>`;
+            
+            // 進入故事開頭
+            document.getElementById('intro-overlay').style.display = 'flex';
+            createRain();
+            generateMudflow(introMudflow);
+            startLightning();
+        }
+
+        // 動態雨滴
+        function createRain() {
+            rainLayer.innerHTML = '';
+            for (let i = 0; i < 70; i++) {
+                const drop = document.createElement('div');
+                drop.classList.add('drop');
+                drop.style.left = `${Math.random() * 110}%`;
+                drop.style.top = `${Math.random() * -120}px`;
+                drop.style.animationDuration = `${0.4 + Math.random() * 0.4}s`;
+                drop.style.animationDelay = `${Math.random() * 1.5}s`;
+                rainLayer.appendChild(drop);
+            }
+        }
+
+        // 土石流生成器 (通用)
+        function generateMudflow(container) {
+            const timer = setInterval(() => {
+                if (storyStep < 4 || container === penaltyMudflow) {
+                    const mud = document.createElement('div');
+                    mud.classList.add('mud-rock');
+                    const size = 30 + Math.random() * 50;
+                    mud.style.width = `${size}px`;
+                    mud.style.height = `${size}px`;
+                    mud.style.left = `${Math.random() * 80}%`;
+                    mud.style.animationDuration = `${1.2 + Math.random() * 1.2}s`;
+                    container.appendChild(mud);
+                    setTimeout(() => mud.remove(), 2500);
+                } else {
+                    clearInterval(timer);
+                }
+            }, 250);
+            return timer;
+        }
+
+        function startLightning() {
+            lightningTimer = setInterval(() => {
+                if (Math.random() > 0.4) {
+                    lightning.classList.add('flash-active');
+                    setTimeout(() => lightning.classList.remove('flash-active'), 500);
+                }
+            }, 2500);
+        }
+
+        function nextStoryStep() {
+            storyStep++;
+            if (storyStep === 2) {
+                river.style.height = '48%';
+                storyDesc.innerHTML = '大水上漲！泥土與河水混在一起了！🌊🏠<span class="sub-english">Muddy river is rising very fast!</span>';
+            } else if (storyStep === 3) {
+                storyDesc.innerHTML = '出發避難前，我們要先對防災包進行二次確認！🎒✨<span class="sub-english">Let\'s double-check our emergency bag before we go!</span>';
+                storyNextBtn.innerHTML = 'LET\'S GO! ➔';
+            } else if (storyStep === 4) {
+                skipIntro();
+            }
+        }
+
+        function skipIntro() {
+            clearInterval(lightningTimer);
+            const overlay = document.getElementById('intro-overlay');
+            overlay.style.opacity = '0';
+            setTimeout(() => {
+                overlay.style.display = 'none';
+                startInGameTimer(); // 主畫面出現後立即開始精密計時！
+            }, 800);
+        }
+
+        // 精密計時器控制
+        function startInGameTimer() {
+            if (isTimerRunning) return;
+            timerStartTimestamp = performance.now();
+            isTimerRunning = true;
+            updateTimerLoop();
+        }
+
+        function updateTimerLoop() {
+            if (!isTimerRunning) return;
+            const currentTimestamp = performance.now();
+            const elapsed = (currentTimestamp - timerStartTimestamp) / 1000;
+            liveTimerBadge.textContent = `⏱️ ${elapsed.toFixed(2)}s`;
+            timerAnimationId = requestAnimationFrame(updateTimerLoop);
+        }
+
+        function stopInGameTimer() {
+            if (!isTimerRunning) return 0;
+            isTimerRunning = false;
+            cancelAnimationFrame(timerAnimationId);
+            const stopTimestamp = performance.now();
+            finalElapsedTime = (stopTimestamp - timerStartTimestamp) / 1000;
+            return finalElapsedTime;
+        }
+
+        // --- 遊戲邏輯實作 ---
+        const desk = document.getElementById('desk');
+        const dropZone = document.getElementById('drop-zone');
+        const packedItemsContainer = document.getElementById('packed-items');
+        const msgBox = document.getElementById('message-box');
+        
+        let essentialItemsCount = itemsData.filter(item => item.isEssential).length;
+        let packedCount = 0;
+        let activeItem = null;
+        let initialX, initialY, xOffset = 0, yOffset = 0;
+        let isPenalizing = false; // 懲罰狀態鎖
+
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+        }
+
+        function initGame() {
+            packedCount = 0;
+            desk.innerHTML = '';
+            packedItemsContainer.innerHTML = '';
+            msgBox.style.display = 'none';
+            dropZone.classList.remove('hovered');
+            isTimerRunning = false;
+            liveTimerBadge.textContent = `⏱️ 0.00s`;
+            shuffleArray(itemsData);
+
+            itemsData.forEach((item, index) => {
+                const el = document.createElement('div');
+                el.classList.add('item');
+                el.id = item.id;
+                el.innerHTML = `
+                    <svg viewBox="0 0 100 100">${item.svg}</svg>
+                    <div class="item-label">${item.en}</div>
+                `;
+                el.dataset.isEssential = item.isEssential;
+                el.dataset.msg = item.msg;
+                el.dataset.name = item.name;
+
+                setTimeout(() => {
+                    const deskRect = desk.getBoundingClientRect();
+                    const randomX = (index % 4) * (deskRect.width / 4) + Math.random() * 20 + 10;
+                    const randomY = Math.floor(index / 4) * (deskRect.height / 2) + Math.random() * 20 + 10;
+                    el.style.left = `${randomX}px`;
+                    el.style.top = `${randomY}px`;
+                }, 50);
+
+                // 滑鼠與觸控事件
+                el.addEventListener('touchstart', dragStart, {passive: false});
+                el.addEventListener('touchend', dragEnd, {passive: false});
+                el.addEventListener('touchmove', drag, {passive: false});
+                el.addEventListener('mousedown', dragStart);
+
+                desk.appendChild(el);
+            });
+        }
+
+        // 監聽全域滑鼠釋放與移動，防止物件卡死
+        window.addEventListener('mousemove', drag);
+        window.addEventListener('mouseup', dragEnd);
+
+        function dragStart(e) {
+            if (isPenalizing) return; // 懲罰中不能操作
+            if (e.target.closest('.item')) {
+                activeItem = e.target.closest('.item');
+                if (activeItem.classList.contains('in-bag')) { activeItem = null; return; }
+
+                const transform = activeItem.style.transform;
+                if (transform) {
+                    const matrix = new DOMMatrixReadOnly(transform);
+                    xOffset = matrix.m41; yOffset = matrix.m42;
+                } else {
+                    xOffset = 0; yOffset = 0;
+                }
+
+                if (e.type === "touchstart") {
+                    initialX = e.touches[0].clientX - xOffset;
+                    initialY = e.touches[0].clientY - yOffset;
+                } else {
+                    initialX = e.clientX - xOffset;
+                    initialY = e.clientY - yOffset;
+                }
+                activeItem.classList.add('dragging');
+                desk.appendChild(activeItem);
+            }
+        }
+
+        function drag(e) {
+            if (!activeItem || isPenalizing) return;
+            e.preventDefault();
+
+            let clientX = (e.type === "touchmove") ? e.touches[0].clientX : e.clientX;
+            let clientY = (e.type === "touchmove") ? e.touches[0].clientY : e.clientY;
+
+            let currentX = clientX - initialX;
+            let currentY = clientY - initialY;
+            xOffset = currentX; yOffset = currentY;
+
+            activeItem.style.transform = `translate3d(${currentX}px, ${currentY}px, 0)`;
+
+            if (isOverDropZone(activeItem)) {
+                dropZone.classList.add('hovered');
+            } else {
+                dropZone.classList.remove('hovered');
+            }
+        }
+
+        function dragEnd() {
+            if (!activeItem) return;
+            activeItem.classList.remove('dragging');
+            dropZone.classList.remove('hovered');
+
+            if (isOverDropZone(activeItem)) {
+                handleDrop(activeItem);
+            } else {
+                activeItem.style.transform = 'translate3d(0, 0, 0)';
+            }
+            activeItem = null;
+        }
+
+        function isOverDropZone(el) {
+            const elRect = el.getBoundingClientRect();
+            const dropRect = dropZone.getBoundingClientRect();
+            const elCenterX = elRect.left + elRect.width / 2;
+            const elCenterY = elRect.top + elRect.height / 2;
+            return (elCenterX >= dropRect.left && elCenterX <= dropRect.right && elCenterY >=
